@@ -2,8 +2,8 @@ name: Build and Deploy
 
 on:
   push:
-    branches: [ main, master ]
-  workflow_dispatch:  # Allow manual triggering
+    branches: [main, master]
+  workflow_dispatch: # Allow manual triggering
 
 jobs:
   build-and-deploy:
@@ -11,16 +11,12 @@ jobs:
     steps:
       - name: Checkout infrastructure repository
         uses: actions/checkout@v3
-        with:
-          repository: your-org/spa-infrastructure
-          path: spa-infrastructure
-          token: ${{ secrets.GH_PAT }}
 
       - name: Checkout source code repository
         uses: actions/checkout@v3
         with:
-          repository: your-org/spa-playground
-          path: spa-playground
+          repository: haebin-lee/spa-source
+          # path: spa-source
           token: ${{ secrets.GH_PAT }}
 
       - name: Configure AWS credentials
@@ -40,7 +36,7 @@ jobs:
           ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
           IMAGE_TAG: frontend
         run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./spa-playground/frontend
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./frontend
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
       - name: Build, tag, and push backend image to Amazon ECR
@@ -49,7 +45,7 @@ jobs:
           ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
           IMAGE_TAG: backend
         run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./spa-playground/backend
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./backend
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
       - name: Deploy to EC2
@@ -60,5 +56,4 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             # Run the deployment script using the infrastructure repo
-            cd ~/spa-infrastructure
             ./deploy.sh
