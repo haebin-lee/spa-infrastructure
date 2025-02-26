@@ -265,8 +265,8 @@ resource "aws_instance" "spa_ec2" {
     # Configure Nginx as a reverse proxy
     cat > /etc/nginx/conf.d/default.conf << NGINXCONF
     server {
-        listen 80;
-        server_name happylucy.works www.happylucy.works;
+        listen 80 default_server;
+        server_name _;
     
         location / {
             proxy_pass http://localhost:3000;
