@@ -75,4 +75,4 @@ jobs:
           ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
           # Run the deployment script on EC2
-          ssh -i ~/.ssh/spa-key -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} 'sudo ./deploy.sh'
+          ssh -i ~/.ssh/spa-key -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} './deploy.sh'
