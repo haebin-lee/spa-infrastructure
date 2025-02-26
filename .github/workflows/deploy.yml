@@ -65,12 +65,14 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
       - name: Deploy to EC2
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ec2-user
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            # Run the deployment script from infrastructure repo
-            # No need to cd into spa-source here
-            ./deploy.sh
+        run: |
+          # Set up SSH key
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/spa-key
+          chmod 600 ~/.ssh/spa-key
+
+          # Add EC2 host to known hosts
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+          # Run the deployment script on EC2
+          ssh -i ~/.ssh/spa-key -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} './deploy.sh'
