@@ -304,7 +304,7 @@ resource "aws_instance" "spa_ec2" {
     #!/bin/bash
     
     # Request SSL certificate from Let's Encrypt
-    certbot --nginx -d happylucy.works -d www.happylucy.works --non-interactive --agree-tos --email your-email@example.com
+    certbot --nginx -d happylucy.works -d www.happylucy.works --non-interactive --agree-tos --email hblee8080@gmail.com
     
     # Set up auto-renewal of SSL certificates
     echo "0 0,12 * * * root python3 -c 'import random; import time; time.sleep(random.random() * 3600)' && certbot renew -q" | sudo tee -a /etc/crontab > /dev/null
