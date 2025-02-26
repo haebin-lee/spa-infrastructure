@@ -208,10 +208,10 @@ resource "aws_instance" "spa_ec2" {
     # Set correct permissions
     chown -R ec2-user:ec2-user /home/ec2-user/.aws
     
-    # Create deployment script - this will be run AFTER you push images to ECR
+    # Create improved deployment script - works both at initialization and with CI/CD
     cat > /home/ec2-user/deploy.sh << 'DEPLOYFILE' 
     #!/bin/bash
-    
+
     # Get the ECR repository URL and RDS info
     ECR_REPO="${aws_ecr_repository.spa_ecr.repository_url}"
     RDS_HOST=$(echo "${aws_db_instance.spa_db.endpoint}" | cut -d: -f1)
@@ -219,14 +219,18 @@ resource "aws_instance" "spa_ec2" {
     DB_PASSWORD="${var.db_password}"
     DB_NAME="${var.db_name}"
     
+    echo "Deploying with ECR repository: $ECR_REPO"
+    
     # Login to ECR 
     aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin $ECR_REPO
     
     # Pull the latest images
+    echo "Pulling latest images from $ECR_REPO"
     docker pull $ECR_REPO:frontend
     docker pull $ECR_REPO:backend
     
     # Create a docker-compose.yml file for production
+    echo "Creating docker-compose.yml"
     cat > /home/ec2-user/docker-compose.yml << DOCKERCOMPOSE
     version: "3.8"
     
@@ -257,22 +261,26 @@ resource "aws_instance" "spa_ec2" {
     
     # Stop any running containers
     cd /home/ec2-user
+    echo "Stopping any existing containers"
     docker-compose down || true
     
     # Start the containers
+    echo "Starting containers"
     docker-compose up -d
     
-    # Configure Nginx as a reverse proxy
-    cat > /etc/nginx/conf.d/default.conf << NGINXCONF
+    # Configure Nginx as a reverse proxy (if it doesn't exist already)
+    if [ ! -f /etc/nginx/conf.d/default.conf ]; then
+      echo "Creating Nginx configuration"
+      sudo bash -c 'cat > /etc/nginx/conf.d/default.conf << NGINXCONF
     server {
-        listen 80 default_server;
-        server_name _;
+        listen 80;
+        server_name happylucy.works www.happylucy.works;
     
         location / {
             proxy_pass http://localhost:3000;
             proxy_http_version 1.1;
             proxy_set_header Upgrade \$http_upgrade;
-            proxy_set_header Connection 'upgrade';
+            proxy_set_header Connection "upgrade";
             proxy_set_header Host \$host;
             proxy_cache_bypass \$http_upgrade;
         }
@@ -281,15 +289,43 @@ resource "aws_instance" "spa_ec2" {
             proxy_pass http://localhost:8080;
             proxy_http_version 1.1;
             proxy_set_header Upgrade \$http_upgrade;
-            proxy_set_header Connection 'upgrade';
+            proxy_set_header Connection "upgrade";
             proxy_set_header Host \$host;
             proxy_cache_bypass \$http_upgrade;
         }
     }
-    NGINXCONF
+    
+    # For direct IP access
+    server {
+        listen 80 default_server;
+        server_name _;
+        
+        location / {
+            proxy_pass http://localhost:3000;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade \$http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_set_header Host \$host;
+            proxy_cache_bypass \$http_upgrade;
+        }
+        
+        location /api {
+            proxy_pass http://localhost:8080;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade \$http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_set_header Host \$host;
+            proxy_cache_bypass \$http_upgrade;
+        }
+    }
+    NGINXCONF'
+    fi
     
     # Reload Nginx
-    systemctl reload nginx
+    echo "Reloading Nginx"
+    sudo systemctl reload nginx
+    
+    echo "Deployment completed successfully"
     DEPLOYFILE
     
     chmod +x /home/ec2-user/deploy.sh
@@ -304,7 +340,7 @@ resource "aws_instance" "spa_ec2" {
     #!/bin/bash
     
     # Request SSL certificate from Let's Encrypt
-    certbot --nginx -d happylucy.works -d www.happylucy.works --non-interactive --agree-tos --email hblee8080@gmail.com
+    sudo certbot --nginx -d happylucy.works -d www.happylucy.works --non-interactive --agree-tos --email hblee8080@gmail.com
     
     # Set up auto-renewal of SSL certificates
     echo "0 0,12 * * * root python3 -c 'import random; import time; time.sleep(random.random() * 3600)' && certbot renew -q" | sudo tee -a /etc/crontab > /dev/null
@@ -316,17 +352,6 @@ resource "aws_instance" "spa_ec2" {
     # Start nginx service
     systemctl start nginx
     systemctl enable nginx
-    
-    # Create a note about next steps
-    cat > /home/ec2-user/README.txt << NOTEFILE
-    Next Steps:
-    1. Run your push-to-ecr.sh script from your local machine to build and push Docker images
-    2. SSH into this EC2 instance
-    3. Run the deployment script: ./deploy.sh
-    4. Set up SSL certificates: ./setup-ssl.sh
-    NOTEFILE
-    
-    chown ec2-user:ec2-user /home/ec2-user/README.txt
   EOF
 
   tags = {
