@@ -80,7 +80,7 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script_stop: true
-          envs: ECR_REGISTRY,ECR_REPOSITORY,AWS_REGION,DB_HOST,DB_USER,DB_PASSWORD,DB_NAME,DB_PORT,REACT_APP_BACKEND_URL
+          envs: ECR_REGISTRY,ECR_REPOSITORY,AWS_REGION,DB_HOST,DB_USER,DB_PASSWORD,DB_NAME,DB_PORT
           script: |
             # Set environment variables for deployment
             export ECR_REPO=$ECR_REGISTRY/$ECR_REPOSITORY
@@ -93,7 +93,7 @@ jobs:
             export NODE_ENV=production
 
             # Run deployment script
-            cd /path/to/your/deployment/directory
+            cd ~
             # Copy deploy.sh from repository or create it on the EC2 instance
             chmod +x deploy.sh
             ./deploy.sh
