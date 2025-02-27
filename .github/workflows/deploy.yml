@@ -84,7 +84,7 @@ jobs:
           envs: ECR_REGISTRY,ECR_REPOSITORY,AWS_REGION,DB_HOST,DB_USER,DB_PASSWORD,DB_NAME,DB_PORT
           script: |
             # Set environment variables for deployment
-            export ECR_REPO=$ECR_REGISTRY/$ECR_REPOSITORY
+            export ECR_REPO=${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}
             export AWS_REGION=${{ secrets.AWS_REGION }}
             export DB_HOST=${{ secrets.DB_HOST }}
             export DB_USER=${{ secrets.DB_USER }}
