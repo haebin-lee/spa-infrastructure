@@ -74,9 +74,9 @@ jobs:
           chmod +x ./ec2-creation.sh
           output=$(./ec2-creation.sh)
 
-          instance_id=$(echo "$output" | grep "instance_id=" | cut -d= -f2)
-          sg_id=$(echo "$output" | grep "sg_id=" | cut -d= -f2)
-          public_ip=$(echo "$output" | grep "public_ip=" | cut -d= -f2)
+          instance_id=$(echo "$output" | grep "^instance_id=" | cut -d= -f2)
+          sg_id=$(echo "$output" | grep ^"sg_id=" | cut -d= -f2)
+          public_ip=$(echo "$output" | grep ^"public_ip=" | cut -d= -f2)
 
           echo "public_ip=${public_ip}" >> $GITHUB_OUTPUT
           echo "instance_id=${instance_id}" >> $GITHUB_OUTPUT
