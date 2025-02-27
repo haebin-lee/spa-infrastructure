@@ -40,60 +40,97 @@ jobs:
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
+      # - name: Login to Amazon ECR
+      #   id: login-ecr
+      #   uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build, tag, and push frontend image to Amazon ECR
+      # - name: Build, tag, and push frontend image to Amazon ECR
+      #   env:
+      #     ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+      #     ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+      #     IMAGE_TAG: frontend
+      #   run: |
+      #     cd spa-source
+      #     docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./frontend
+      #     docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+      # - name: Build, tag, and push backend image to Amazon ECR
+      #   env:
+      #     ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+      #     ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+      #     IMAGE_TAG: backend
+      #   run: |
+      #     cd spa-source
+      #     docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./backend
+      #     docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+      - name: Launch temporary EC2 instance
+        id: launch-ec2
         env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
-          IMAGE_TAG: frontend
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          SSH_KEY_NAME: ${{ secrets.EC2_SSH_KEY_NAME }}
         run: |
-          cd spa-source
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./frontend
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          chmod +x ./scripts/ec2-creation.sh
+          output=$(./scripts/ec2-creation.sh)
 
-      - name: Build, tag, and push backend image to Amazon ECR
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
-          IMAGE_TAG: backend
-        run: |
-          cd spa-source
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./backend
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          instance_id=$(echo "$output" | grep "instance_id=" | cut -d= -f2)
+          sg_id=$(echo "$output" | grep "sg_id=" | cut -d= -f2)
+          public_ip=$(echo "$output" | grep "public_ip=" | cut -d= -f2)
 
-      - name: Copy deployment files to EC2
+          echo "public_ip=${public_ip}" >> $GITHUB_OUTPUT
+          echo "instance_id=${instance_id}" >> $GITHUB_OUTPUT
+          echo "sg_id=${sg_id}" >> $GITHUB_OUTPUT
+
+      - name: copy deployment files to EC2
         uses: appleboy/scp-action@master
         with:
-          host: ${{ secrets.EC2_HOST }}
+          host: ${{ steps.launch-ec2.outputs.public_ip }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           source: "scripts/deploy.sh,scripts/docker-compose.yml"
           target: "~/"
           strip_components: 1
 
-      - name: Deploy to EC2
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USERNAME }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script_stop: true
-          envs: ECR_REGISTRY,ECR_REPOSITORY,AWS_REGION,DB_HOST,DB_USER,DB_PASSWORD,DB_NAME,DB_PORT
-          script: |
-            # Set environment variables for deployment
-            export ECR_REPO=${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}
-            export AWS_REGION=${{ secrets.AWS_REGION }}
-            export DB_HOST=${{ secrets.DB_HOST }}
-            export DB_USER=${{ secrets.DB_USER }}
-            export DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-            export DB_NAME=${{ secrets.DB_NAME }}
-            export DB_PORT=${{ secrets.DB_PORT }}
+      # - name: Copy deployment files to EC2
+      #   uses: appleboy/scp-action@master
+      #   with:
+      #     host: ${{ secrets.EC2_HOST }}
+      #     username: ${{ secrets.EC2_USERNAME }}
+      #     key: ${{ secrets.EC2_SSH_KEY }}
+      #     source: "scripts/deploy.sh,scripts/docker-compose.yml"
+      #     target: "~/"
+      #     strip_components: 1
 
-            # Run deployment script
-            cd ~
-            # Copy deploy.sh from repository or create it on the EC2 instance
-            chmod +x deploy.sh
-            ./deploy.sh
+      # - name: Deploy to EC2
+      #   uses: appleboy/ssh-action@master
+      #   with:
+      #     host: ${{ secrets.EC2_HOST }}
+      #     username: ${{ secrets.EC2_USERNAME }}
+      #     key: ${{ secrets.EC2_SSH_KEY }}
+      #     script_stop: true
+      #     envs: ECR_REGISTRY,ECR_REPOSITORY,AWS_REGION,DB_HOST,DB_USER,DB_PASSWORD,DB_NAME,DB_PORT
+      #     script: |
+      #       # Set environment variables for deployment
+      #       export ECR_REPO=${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}
+      #       export AWS_REGION=${{ secrets.AWS_REGION }}
+      #       export DB_HOST=${{ secrets.DB_HOST }}
+      #       export DB_USER=${{ secrets.DB_USER }}
+      #       export DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+      #       export DB_NAME=${{ secrets.DB_NAME }}
+      #       export DB_PORT=${{ secrets.DB_PORT }}
+
+      #       # Run deployment script
+      #       cd ~
+      #       # Copy deploy.sh from repository or create it on the EC2 instance
+      #       chmod +x deploy.sh
+      #       ./deploy.sh
+
+      - name: Clean up temporary EC2
+        if: always()
+        env:
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          SG_ID: $${{ steps.launch-ec2.outputs.sg_id }}
+          INSTANCE_ID: $${{ steps.launch-ec2.outputs.instance_id }}
+        run: |
+          chmod +x ./scripts/ec2-deletion.sh
+          ./scripts/ec2-deletion.sh
