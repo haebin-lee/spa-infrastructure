@@ -27,7 +27,7 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
-          AWS_DEFAULT_REGION: us-west-2
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION}}
         run: |
           echo "Testing AWS credentials with session token..."
           aws sts get-caller-identity
@@ -38,7 +38,7 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
-          aws-region: us-west-2
+          aws-region: ${{ secrets.AWS_REGION}}
 
       - name: Login to Amazon ECR
         id: login-ecr
@@ -63,16 +63,3 @@ jobs:
           cd spa-source
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./backend
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-
-      - name: Deploy to EC2
-        run: |
-          # Set up SSH key
-          mkdir -p ~/.ssh
-          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/spa-key
-          chmod 600 ~/.ssh/spa-key
-
-          # Add EC2 host to known hosts
-          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
-
-          # Run the deployment script on EC2
-          ssh -i ~/.ssh/spa-key -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} './deploy.sh'
