@@ -70,8 +70,9 @@ jobs:
           AWS_REGION: ${{ secrets.AWS_REGION }}
           SSH_KEY_NAME: ${{ secrets.EC2_SSH_KEY_NAME }}
         run: |
-          chmod +x ./scripts/ec2-creation.sh
-          output=$(./scripts/ec2-creation.sh)
+          cd scripts
+          chmod +x ./ec2-creation.sh
+          output=$(./ec2-creation.sh)
 
           instance_id=$(echo "$output" | grep "instance_id=" | cut -d= -f2)
           sg_id=$(echo "$output" | grep "sg_id=" | cut -d= -f2)
@@ -132,5 +133,6 @@ jobs:
           SG_ID: $${{ steps.launch-ec2.outputs.sg_id }}
           INSTANCE_ID: $${{ steps.launch-ec2.outputs.instance_id }}
         run: |
-          chmod +x ./scripts/ec2-deletion.sh
-          ./scripts/ec2-deletion.sh
+          cd scripts
+          chmod +x ./ec2-deletion.sh
+          ./ec2-deletion.sh
