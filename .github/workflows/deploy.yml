@@ -70,8 +70,9 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "scripts/deploy.sh,docker-compose.yml"
+          source: "scripts/deploy.sh,scripts/docker-compose.yml"
           target: "~/"
+          strip_components: 1
 
       - name: Deploy to EC2
         uses: appleboy/ssh-action@master
@@ -90,7 +91,6 @@ jobs:
             export DB_PASSWORD=${{ secrets.DB_PASSWORD }}
             export DB_NAME=${{ secrets.DB_NAME }}
             export DB_PORT=${{ secrets.DB_PORT }}
-            export NODE_ENV=production
 
             # Run deployment script
             cd ~
