@@ -103,6 +103,9 @@ jobs:
           script: |
             # Set environment variables for deployment
             export ECR_REPO=${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}
+            export AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
+            export AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
+            export AWS_SESSION_TOKEN=${{ secrets.AWS_SESSION_TOKEN }}
             export AWS_REGION=${{ secrets.AWS_REGION }}
             export DB_HOST=${{ secrets.DB_HOST }}
             export DB_USER=${{ secrets.DB_USER }}
@@ -117,7 +120,8 @@ jobs:
             ./deploy.sh
 
       - name: Smoke test
-        env: ${{ steps.launch-ec2.outputs.public_ip }}s
+        env:
+          public_ip: ${{ steps.launch-ec2.outputs.public_ip }}
         run: cd scripts
           chmod +x ./smoke-test.sh
           ./smoke-test.sh
@@ -143,6 +147,9 @@ jobs:
       #     script: |
       #       # Set environment variables for deployment
       #       export ECR_REPO=${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}
+      # export AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
+      # export AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      # export AWS_SESSION_TOKEN=${{ secrets.AWS_SESSION_TOKEN }}
       #       export AWS_REGION=${{ secrets.AWS_REGION }}
       #       export DB_HOST=${{ secrets.DB_HOST }}
       #       export DB_USER=${{ secrets.DB_USER }}
