@@ -50,18 +50,21 @@ jobs:
           docker build -t local:frontend ./frontend 
           docker build -t local:backend ./backend
 
-          docker save local:frontend > frontend.tar
-          docker save local:backend > backend.tar
+          # 임시 디렉토리 생성
+          mkdir -p $GITHUB_WORKSPACE/deploy_files
 
-          # Move the files to where they need to be
-          mv frontend.tar ../
-          mv backend.tar ../
+          # 직접 deploy_files에 Docker 이미지 저장
+          docker save local:frontend > $GITHUB_WORKSPACE/deploy_files/frontend.tar
+          docker save local:backend > $GITHUB_WORKSPACE/deploy_files/backend.tar
 
-          # Debug after moving
-          cd ..
-          echo "After moving, current directory: $(pwd)"
-          echo "Files in current directory:"
-          ls -la *.tar
+          # 스크립트 파일 복사 
+          cp $GITHUB_WORKSPACE/scripts/ec2-deploy.sh $GITHUB_WORKSPACE/deploy_files/
+          cp $GITHUB_WORKSPACE/scripts/docker-compose.yml $GITHUB_WORKSPACE/deploy_files/
+
+          # 디버깅: 파일 구조 확인
+          echo "디렉토리 구조:"
+          find $GITHUB_WORKSPACE/deploy_files -type f | sort
+          ls -la $GITHUB_WORKSPACE/deploy_files/
 
       # - name: Build, tag, and push frontend image to Amazon ECR
       #   env:
@@ -108,7 +111,8 @@ jobs:
           host: ${{ steps.launch-ec2.outputs.public_ip }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "frontend.tar,backend.tar,scripts/ec2-deploy.sh,scripts/docker-compose.yml"
+          # source: "frontend.tar,backend.tar,scripts/ec2-deploy.sh,scripts/docker-compose.yml"
+          source: "deploy_files/*"
           target: "~/"
           strip_components: 1
 
