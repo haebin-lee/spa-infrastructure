@@ -64,23 +64,23 @@ jobs:
       #     docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./backend
       #     docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
-      - name: Launch temporary EC2 instance
-        id: launch-ec2
-        env:
-          AWS_REGION: ${{ secrets.AWS_REGION }}
-          SSH_KEY_NAME: ${{ secrets.EC2_SSH_KEY_NAME }}
-        run: |
-          cd scripts
-          chmod +x ./ec2-creation.sh
-          output=$(./ec2-creation.sh)
+      # - name: Launch temporary EC2 instance
+      #   id: launch-ec2
+      #   env:
+      #     AWS_REGION: ${{ secrets.AWS_REGION }}
+      #     SSH_KEY_NAME: ${{ secrets.EC2_SSH_KEY_NAME }}
+      #   run: |
+      #     cd scripts
+      #     chmod +x ./ec2-creation.sh
+      #     output=$(./ec2-creation.sh)
 
-          instance_id=$(echo "$output" | grep "^instance_id=" | cut -d= -f2)
-          sg_id=$(echo "$output" | grep ^"sg_id=" | cut -d= -f2)
-          public_ip=$(echo "$output" | grep ^"public_ip=" | cut -d= -f2)
+      #     instance_id=$(echo "$output" | grep "^instance_id=" | cut -d= -f2)
+      #     sg_id=$(echo "$output" | grep ^"sg_id=" | cut -d= -f2)
+      #     public_ip=$(echo "$output" | grep ^"public_ip=" | cut -d= -f2)
 
-          echo "public_ip=${public_ip}" >> $GITHUB_OUTPUT
-          echo "instance_id=${instance_id}" >> $GITHUB_OUTPUT
-          echo "sg_id=${sg_id}" >> $GITHUB_OUTPUT
+      #     echo "public_ip=${public_ip}" >> $GITHUB_OUTPUT
+      #     echo "instance_id=${instance_id}" >> $GITHUB_OUTPUT
+      #     echo "sg_id=${sg_id}" >> $GITHUB_OUTPUT
 
       - name: Copy deployment files to temporary EC2
         uses: appleboy/scp-action@master
@@ -121,7 +121,8 @@ jobs:
 
       - name: Smoke test
         env:
-          public_ip: ${{ steps.launch-ec2.outputs.public_ip }}
+          public_ip: 52.54.218.231
+          # public_ip: ${{ steps.launch-ec2.outputs.public_ip }}
         run: cd scripts
           chmod +x ./smoke-test.sh
           ./smoke-test.sh
@@ -163,13 +164,13 @@ jobs:
       #       chmod +x deploy.sh
       #       ./deploy.sh
 
-      - name: Clean up temporary EC2
-        if: always()
-        env:
-          AWS_REGION: ${{ secrets.AWS_REGION }}
-          SG_ID: ${{ steps.launch-ec2.outputs.sg_id }}
-          INSTANCE_ID: ${{ steps.launch-ec2.outputs.instance_id }}
-        run: |
-          cd scripts
-          chmod +x ./ec2-deletion.sh
-          ./ec2-deletion.sh
+      # - name: Clean up temporary EC2
+      #   if: always()
+      #   env:
+      #     AWS_REGION: ${{ secrets.AWS_REGION }}
+      #     SG_ID: ${{ steps.launch-ec2.outputs.sg_id }}
+      #     INSTANCE_ID: ${{ steps.launch-ec2.outputs.instance_id }}
+      #   run: |
+      #     cd scripts
+      #     chmod +x ./ec2-deletion.sh
+      #     ./ec2-deletion.sh

@@ -16,7 +16,8 @@ EOF
 
 # Setup AWS credentials directories
 sudo mkdir -p /root/.aws /home/ec2-user/.aws
-sudo chmod 600 /home/ec2-user/.aws/credentials /root/.aws/credentials
+
+sudo chown ec2-user:ec2-user /home/ec2-user/.aws
 
 # Pass AWS credentials to instance
 cat > /home/ec2-user/.aws/credentials << AWSCREDS
@@ -25,7 +26,7 @@ aws_access_key_id=${AWS_ACCESS_KEY_ID}
 aws_secret_access_key=${AWS_SECRET_ACCESS_KEY}
 aws_session_token=${AWS_SESSION_TOKEN}
 AWSCREDS
-sudo cp /home/ec2-user/.aws/config /root/.aws/config
+sudo cp /home/ec2-user/.aws/credentials /root/.aws/credentials
 
 # Set up AWS region configuration
 cat > /home/ec2-user/.aws/config << AWSCONFIG
