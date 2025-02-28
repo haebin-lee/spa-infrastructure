@@ -82,7 +82,7 @@ jobs:
           echo "instance_id=${instance_id}" >> $GITHUB_OUTPUT
           echo "sg_id=${sg_id}" >> $GITHUB_OUTPUT
 
-      - name: copy deployment files to EC2
+      - name: Copy deployment files to temporary EC2
         uses: appleboy/scp-action@master
         with:
           host: ${{ steps.launch-ec2.outputs.public_ip }}
@@ -91,6 +91,36 @@ jobs:
           source: "scripts/deploy.sh,scripts/docker-compose.yml"
           target: "~/"
           strip_components: 1
+
+      - name: Deploy to temporary EC2
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ steps.launch-ec2.outputs.public_ip }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script_stop: true
+          envs: ECR_REGISTRY,ECR_REPOSITORY,AWS_REGION,DB_HOST,DB_USER,DB_PASSWORD,DB_NAME,DB_PORT
+          script: |
+            # Set environment variables for deployment
+            export ECR_REPO=${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}
+            export AWS_REGION=${{ secrets.AWS_REGION }}
+            export DB_HOST=${{ secrets.DB_HOST }}
+            export DB_USER=${{ secrets.DB_USER }}
+            export DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            export DB_NAME=${{ secrets.DB_NAME }}
+            export DB_PORT=${{ secrets.DB_PORT }}
+
+            # Run deployment script
+            cd ~
+            # Copy deploy.sh from repository or create it on the EC2 instance
+            chmod +x deploy.sh
+            ./deploy.sh
+
+      - name: Smoke test
+        env: ${{ steps.launch-ec2.outputs.public_ip }}s
+        run: cd scripts
+          chmod +x ./smoke-test.sh
+          ./smoke-test.sh
 
       # - name: Copy deployment files to EC2
       #   uses: appleboy/scp-action@master
@@ -130,8 +160,8 @@ jobs:
         if: always()
         env:
           AWS_REGION: ${{ secrets.AWS_REGION }}
-          SG_ID: $${{ steps.launch-ec2.outputs.sg_id }}
-          INSTANCE_ID: $${{ steps.launch-ec2.outputs.instance_id }}
+          SG_ID: ${{ steps.launch-ec2.outputs.sg_id }}
+          INSTANCE_ID: ${{ steps.launch-ec2.outputs.instance_id }}
         run: |
           cd scripts
           chmod +x ./ec2-deletion.sh

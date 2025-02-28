@@ -25,4 +25,5 @@ docker pull $ECR_REPO:backend
 echo "Starting containers with docker-compose..."
 docker-compose up -d
 
+sleep 60
 echo "Deployment completed successfully!"
