@@ -22,15 +22,15 @@ jobs:
           path: spa-source
           token: ${{ secrets.GH_PAT }}
 
-      - name: Debug AWS credentials
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
-          AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
-        run: |
-          echo "Testing AWS credentials with session token..."
-          aws sts get-caller-identity
+      # - name: Debug AWS credentials
+      #   env:
+      #     AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      #     AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      #     AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+      #     AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
+      #   run: |
+      #     echo "Testing AWS credentials with session token..."
+      #     aws sts get-caller-identity
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -40,29 +40,38 @@ jobs:
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
+      # - name: Login to Amazon ECR
+      #   id: login-ecr
+      #   uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build, tag, and push frontend image to Amazon ECR
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
-          IMAGE_TAG: frontend
+      - name: Build Docker image
         run: |
           cd spa-source
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./frontend
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker build -t local:frontend ./frontend 
+          docker build -t local:backend ./backend
 
-      - name: Build, tag, and push backend image to Amazon ECR
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
-          IMAGE_TAG: backend
-        run: |
-          cd spa-source
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./backend
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker save local:frontend > frontend.tar
+          docker save local:backend > backend.tar
+
+      # - name: Build, tag, and push frontend image to Amazon ECR
+      #   env:
+      #     ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+      #     ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+      #     IMAGE_TAG: frontend
+      #   run: |
+      #     cd spa-source
+      #     docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./frontend
+      #     docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+      # - name: Build, tag, and push backend image to Amazon ECR
+      #   env:
+      #     ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+      #     ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+      #     IMAGE_TAG: backend
+      #   run: |
+      #     cd spa-source
+      #     docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./backend
+      #     docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
       - name: Launch temporary EC2 instance
         id: launch-ec2
@@ -89,7 +98,7 @@ jobs:
           host: ${{ steps.launch-ec2.outputs.public_ip }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "scripts/deploy.sh,scripts/docker-compose.yml"
+          source: "frontend.tar,backend.tar,scripts/ec2-deploy.sh,scripts/docker-compose.yml"
           target: "~/"
           strip_components: 1
 
@@ -102,23 +111,18 @@ jobs:
           script_stop: true
           envs: ECR_REGISTRY,ECR_REPOSITORY,AWS_REGION,DB_HOST,DB_USER,DB_PASSWORD,DB_NAME,DB_PORT
           script: |
-            # Set environment variables for deployment
-            export ECR_REPO=${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}
-            export AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
-            export AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
-            export AWS_SESSION_TOKEN=${{ secrets.AWS_SESSION_TOKEN }}
-            export AWS_REGION=${{ secrets.AWS_REGION }}
+            docker load < frontend.tar
+            docker load < backend.tar 
+
             export DB_HOST=${{ secrets.DB_HOST }}
             export DB_USER=${{ secrets.DB_USER }}
             export DB_PASSWORD=${{ secrets.DB_PASSWORD }}
             export DB_NAME=${{ secrets.DB_NAME }}
             export DB_PORT=${{ secrets.DB_PORT }}
 
-            # Run deployment script
             cd ~
-            # Copy deploy.sh from repository or create it on the EC2 instance
-            chmod +x deploy.sh
-            ./deploy.sh
+            chmod +x ec2-deploy.sh
+            ./ec2-deploy.sh
 
       - name: Smoke test
         env:
@@ -127,6 +131,24 @@ jobs:
           cd scripts
           chmod +x smoke-tests.sh
           ./smoke-tests.sh
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Tag and push to ECR
+        if: success()
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+        run: |
+          # Tag with ECR tags
+          docker tag local:frontend $ECR_REGISTRY/$ECR_REPOSITORY:frontend
+          docker tag local:backend $ECR_REGISTRY/$ECR_REPOSITORY:backend
+
+          # Push to ECR
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:frontend
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:backend
 
       - name: Copy deployment files to EC2
         if: success()
@@ -149,7 +171,6 @@ jobs:
           script_stop: true
           envs: ECR_REGISTRY,ECR_REPOSITORY,AWS_REGION,DB_HOST,DB_USER,DB_PASSWORD,DB_NAME,DB_PORT
           script: |
-            # Set environment variables for deployment
             export ECR_REPO=${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}
             export AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
             export AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -161,9 +182,7 @@ jobs:
             export DB_NAME=${{ secrets.DB_NAME }}
             export DB_PORT=${{ secrets.DB_PORT }}
 
-            # Run deployment script
             cd ~
-            # Copy deploy.sh from repository or create it on the EC2 instance
             chmod +x deploy.sh
             ./deploy.sh
 
