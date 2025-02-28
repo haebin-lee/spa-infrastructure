@@ -1,0 +1,110 @@
+name: Build, Deploy and Mock Test
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  build-and-deploy:
+    permissions:
+      id-token: write
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout infrastructure repository
+        uses: actions/checkout@v3
+
+      - name: Checkout source code repository
+        uses: actions/checkout@v3
+        with:
+          repository: haebin-lee/spa-source
+          path: spa-source
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Build Docker image
+        run: |
+          cd spa-source
+          docker build -t local:frontend ./frontend 
+          docker build -t local:backend ./backend
+
+          mkdir -p $GITHUB_WORKSPACE/deploy_files
+
+          docker save local:frontend > $GITHUB_WORKSPACE/deploy_files/frontend.tar
+          docker save local:backend > $GITHUB_WORKSPACE/deploy_files/backend.tar
+
+          cp $GITHUB_WORKSPACE/scripts/ec2-deploy.sh $GITHUB_WORKSPACE/deploy_files/
+          cp $GITHUB_WORKSPACE/scripts/docker-compose.yml $GITHUB_WORKSPACE/deploy_files/
+
+          echo "Structure:"
+          find $GITHUB_WORKSPACE/deploy_files -type f | sort
+          ls -la $GITHUB_WORKSPACE/deploy_files/
+
+      - name: Launch temporary EC2 instance
+        id: launch-ec2
+        env:
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          SSH_KEY_NAME: ${{ secrets.EC2_SSH_KEY_NAME }}
+          DB_SG_ID: ${{ secrets.DB_SG_ID }}
+        run: |
+          cd scripts
+          chmod +x ./ec2-creation.sh
+          output=$(./ec2-creation.sh)
+
+          instance_id=$(echo "$output" | grep "^instance_id=" | cut -d= -f2)
+          sg_id=$(echo "$output" | grep ^"sg_id=" | cut -d= -f2)
+          public_ip=$(echo "$output" | grep ^"public_ip=" | cut -d= -f2)
+
+          echo "public_ip=${public_ip}" >> $GITHUB_OUTPUT
+          echo "instance_id=${instance_id}" >> $GITHUB_OUTPUT
+          echo "sg_id=${sg_id}" >> $GITHUB_OUTPUT
+
+      - name: Copy deployment files to temporary EC2
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ steps.launch-ec2.outputs.public_ip }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "deploy_files/*"
+          target: "~/"
+          strip_components: 1
+
+      - name: Deploy to temporary EC2
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ steps.launch-ec2.outputs.public_ip }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script_stop: true
+          envs: ECR_REPO,AWS_REGION,DB_HOST,DB_USER,DB_PASSWORD,DB_NAME,DB_PORT
+          script: |
+            docker load < frontend.tar
+            docker load < backend.tar 
+
+            export DB_HOST=${{ secrets.DB_HOST }}
+            export DB_USER=${{ secrets.DB_USER }}
+            export DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            export DB_NAME=${{ secrets.DB_NAME }}
+            export DB_PORT=${{ secrets.DB_PORT }}
+
+            cd ~
+            chmod +x ec2-deploy.sh
+            ./ec2-deploy.sh
+
+      - name: Smoke test
+        env:
+          PUBLIC_IP: ${{ steps.launch-ec2.outputs.public_ip }}
+          ECR_REPO: ${{ secrets.ECR_REPO }}
+        run: |
+          cd scripts
+          chmod +x smoke-tests.sh
+          ./smoke-tests.sh &
+          exit.

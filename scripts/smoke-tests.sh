@@ -4,7 +4,7 @@ set -e  # Exit immediately if a command exits with a non-zero status
 
 # Test frontend
 echo "Testing frontend availability..."
-HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 http://$public_ip:3000/)
+HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 http://$PUBLIC_IP:3000/)
 if [ "$HTTP_STATUS" -eq 200 ]; then
   echo "✅ Frontend test passed - HTTP status 200 OK"
 else
@@ -15,7 +15,7 @@ fi
 
 # Test backend health
 echo "Testing backend health endpoint..."
-BACKEND_TEST=$(curl -s http://$public_ip:8080/health | grep -q '{"status":"ok","result":1}' && echo 'SUCCESS' || echo 'FAILED')
+BACKEND_TEST=$(curl -s http://$PUBLIC_IP:8080/health | grep -q '{"status":"ok","result":1}' && echo 'SUCCESS' || echo 'FAILED')
 if [ "$BACKEND_TEST" = "SUCCESS" ]; then
   echo "✅ Backend health test passed"
 else
@@ -26,3 +26,17 @@ fi
 
 echo "SMOKE_TEST_RESULT=SUCCESS"
 echo "All smoke tests passed successfully! 🎉"
+
+echo "Pushing images to ECR..."
+
+# Tag with ECR tags
+echo "Tagging images..."
+docker tag local:frontend $ECR_REPO:frontend
+docker tag local:backend $ECR_REPO:backend
+
+# Push to ECR
+echo "Pushing images to ECR..."
+docker push $ECR_REPO:frontend
+docker push $ECR_REPO:backend
+
+echo "Successfully pushed images to ECR 🚀"
