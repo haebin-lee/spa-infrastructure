@@ -13,10 +13,11 @@ DB_NAME=${DB_NAME}
 DB_PORT=${DB_PORT}
 EOF
 
-chmod 600 /home/ec2-user/.aws/credentials /root/.aws/credentials
 
 # Setup AWS credentials directories
 mkdir -p /root/.aws /home/ec2-user/.aws
+
+chmod 600 /home/ec2-user/.aws/credentials /root/.aws/credentials
 
 # Pass AWS credentials to instance
 cat > /home/ec2-user/.aws/credentials << AWSCREDS
