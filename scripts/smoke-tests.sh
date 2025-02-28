@@ -29,14 +29,14 @@ echo "All smoke tests passed successfully! 🎉"
 
 echo "Pushing images to ECR..."
 
-# Tag with ECR tags
-echo "Tagging images..."
-docker tag local:frontend $ECR_REPO:frontend
-docker tag local:backend $ECR_REPO:backend
+# # Tag with ECR tags
+# echo "Tagging images..."
+# docker tag local:frontend $ECR_REPO:frontend
+# docker tag local:backend $ECR_REPO:backend
 
-# Push to ECR
-echo "Pushing images to ECR..."
-docker push $ECR_REPO:frontend
-docker push $ECR_REPO:backend
+# # Push to ECR
+# echo "Pushing images to ECR..."
+# docker push $ECR_REPO:frontend
+# docker push $ECR_REPO:backend
 
-echo "Successfully pushed images to ECR 🚀"
+# echo "Successfully pushed images to ECR 🚀"

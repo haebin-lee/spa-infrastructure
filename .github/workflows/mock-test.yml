@@ -106,5 +106,29 @@ jobs:
         run: |
           cd scripts
           chmod +x smoke-tests.sh
-          ./smoke-tests.sh &
-          exit.
+          ./smoke-tests.sh
+
+      - name: Tag and push to ECR
+        if: success()
+        env:
+          ECR_REPO: ${{ secrets.ECR_REPO }}
+        run: |
+          # Tag with ECR tags
+          docker tag local:frontend $ECR_REPO:frontend
+          docker tag local:backend $ECR_REPO:backend
+
+          # Push to ECR
+          docker push $ECR_REPO:frontend
+          docker push $ECR_REPO:backend
+
+      - name: Clean up temporary EC2
+        if: always()
+        env:
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          SG_ID: ${{ steps.launch-ec2.outputs.sg_id }}
+          DB_SG_ID: ${{ secrets.DB_SG_ID }}
+          INSTANCE_ID: ${{ steps.launch-ec2.outputs.instance_id }}
+        run: |
+          cd scripts
+          chmod +x ec2-deletion.sh
+          ./ec2-deletion.sh
