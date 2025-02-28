@@ -19,6 +19,7 @@ aws ec2 wait instance-terminated --instance-ids $INSTANCE_ID --region $AWS_REGIO
 
 # Delete security group
 echo "Deleting security group..."
+aws ec2 revoke-security-group-ingress --group-id $DB_SG_ID --protocol tcp --port 3306 --source-group $SG_ID --region $AWS_REGION
 aws ec2 delete-security-group --group-id $SG_ID --region $AWS_REGION > /dev/null
 
 echo "Cleanup complete!"

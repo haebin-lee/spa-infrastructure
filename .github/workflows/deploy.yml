@@ -95,7 +95,8 @@ jobs:
       - name: Deploy to temporary EC2
         uses: appleboy/ssh-action@master
         with:
-          host: ${{ steps.launch-ec2.outputs.public_ip }}
+          # host: ${{ steps.launch-ec2.outputs.public_ip }}
+          host: 52.54.218.231
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script_stop: true

@@ -28,6 +28,7 @@ aws ec2 authorize-security-group-ingress --group-id $SG_ID --protocol tcp --port
 aws ec2 authorize-security-group-ingress --group-id $SG_ID --protocol tcp --port 80 --cidr 0.0.0.0/0 --region $AWS_REGION > /dev/null
 aws ec2 authorize-security-group-ingress --group-id $SG_ID --protocol tcp --port 3000 --cidr 0.0.0.0/0 --region $AWS_REGION > /dev/null
 aws ec2 authorize-security-group-ingress --group-id $SG_ID --protocol tcp --port 8080 --cidr 0.0.0.0/0 --region $AWS_REGION > /dev/null
+aws ec2 authorize-security-group-ingress --group-id $DB_SG_ID --protocol tcp --port 3306 --source-group $SG_ID --region $AWS_REGION > /dev/null
 
 # Encode user data script
 # With these lines:
