@@ -50,8 +50,8 @@ jobs:
           docker build -t local:frontend ./frontend 
           docker build -t local:backend ./backend
 
-          docker save local:frontend > frontend.tar
-          docker save local:backend > backend.tar
+          docker save local:frontend > ../scripts/frontend.tar
+          docker save local:backend > ../scripts/backend.tar
 
       # - name: Build, tag, and push frontend image to Amazon ECR
       #   env:
