@@ -50,8 +50,18 @@ jobs:
           docker build -t local:frontend ./frontend 
           docker build -t local:backend ./backend
 
-          docker save local:frontend > ../scripts/frontend.tar
-          docker save local:backend > ../scripts/backend.tar
+          docker save local:frontend > frontend.tar
+          docker save local:backend > backend.tar
+
+          # Move the files to where they need to be
+          mv frontend.tar ../
+          mv backend.tar ../
+
+          # Debug after moving
+          cd ..
+          echo "After moving, current directory: $(pwd)"
+          echo "Files in current directory:"
+          ls -la *.tar
 
       # - name: Build, tag, and push frontend image to Amazon ECR
       #   env:
