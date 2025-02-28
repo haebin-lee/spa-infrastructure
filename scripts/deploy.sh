@@ -15,9 +15,8 @@ EOF
 
 
 # Setup AWS credentials directories
-mkdir -p /root/.aws /home/ec2-user/.aws
-
-chmod 600 /home/ec2-user/.aws/credentials /root/.aws/credentials
+sudo mkdir -p /root/.aws /home/ec2-user/.aws
+sudo chmod 600 /home/ec2-user/.aws/credentials /root/.aws/credentials
 
 # Pass AWS credentials to instance
 cat > /home/ec2-user/.aws/credentials << AWSCREDS
@@ -26,6 +25,7 @@ aws_access_key_id=${AWS_ACCESS_KEY_ID}
 aws_secret_access_key=${AWS_SECRET_ACCESS_KEY}
 aws_session_token=${AWS_SESSION_TOKEN}
 AWSCREDS
+sudo cp /home/ec2-user/.aws/config /root/.aws/config
 
 # Set up AWS region configuration
 cat > /home/ec2-user/.aws/config << AWSCONFIG
@@ -33,9 +33,7 @@ cat > /home/ec2-user/.aws/config << AWSCONFIG
 region=${AWS_REGION}
 output=json
 AWSCONFIG
-
-# Copy config to root user
-cp /home/ec2-user/.aws/config /root/.aws/config
+sudo cp /home/ec2-user/.aws/config /root/.aws/config
 
 # AWS ECR Authentication
 AWS_REGION=${AWS_REGION}
