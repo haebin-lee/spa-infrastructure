@@ -123,7 +123,8 @@ jobs:
       - name: Smoke test
         env:
           public_ip: ${{ steps.launch-ec2.outputs.public_ip }}
-        run: cd scripts
+        run: |
+          cd scripts
           chmod +x ./smoke-test.sh
           ./smoke-test.sh
 
