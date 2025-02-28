@@ -85,7 +85,8 @@ jobs:
       - name: Copy deployment files to temporary EC2
         uses: appleboy/scp-action@master
         with:
-          host: ${{ steps.launch-ec2.outputs.public_ip }}
+          # host: ${{ steps.launch-ec2.outputs.public_ip }}
+          host: 52.54.218.231
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           source: "scripts/deploy.sh,scripts/docker-compose.yml"
