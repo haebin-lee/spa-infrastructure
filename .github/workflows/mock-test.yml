@@ -108,6 +108,10 @@ jobs:
           chmod +x smoke-tests.sh
           ./smoke-tests.sh
 
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
       - name: Tag and push to ECR
         if: success()
         env:
