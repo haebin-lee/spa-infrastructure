@@ -8,6 +8,7 @@ services:
       - "3000:3000"
     environment:
       - NEXT_APP_BACKEND_URL=http://backend:8080
+      - NEXT_PUBLIC_BACKEND_URL=http://localhost:8080
     depends_on:
       - backend
 
