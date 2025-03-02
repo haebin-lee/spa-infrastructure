@@ -3,6 +3,30 @@
 # Stop on errors
 set -e
 
+log() {
+  echo "$(date +'%Y-%m-%d %H:%M:%S') - $1"
+}
+
+# Check required environment variables
+required_vars=(
+  "ECR_REPO"
+  "AWS_ACCESS_KEY_ID"
+  "AWS_SECRET_ACCESS_KEY"
+  "AWS_REGION"
+  "DB_HOST"
+  "DB_USER"
+  "DB_PASSWORD"
+  "DB_NAME"
+  "DB_PORT"
+)
+
+for var in "${required_vars[@]}"; do
+  if [ -z "${!var}" ]; then
+    log "ERROR: Required environment variable $var is not set"
+    exit 1
+  fi
+done
+
 # Create .env file for docker-compose
 cat > .env << EOF
 ECR_REPO=${ECR_REPO}
@@ -40,6 +64,13 @@ sudo cp /home/ec2-user/.aws/config /root/.aws/config
 AWS_REGION=${AWS_REGION}
 echo "Logging in to Amazon ECR..."
 aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REPO
+
+# Check for existing containers and clean up
+log "Checking for existing deployment..."
+if docker-compose ps &>/dev/null; then
+  log "Stopping existing containers..."
+  docker-compose down || log "Warning: Failed to stop existing containers"
+fi
 
 echo "Pulling latest images..."
 docker pull $ECR_REPO:frontend
