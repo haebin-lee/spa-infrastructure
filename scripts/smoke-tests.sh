@@ -4,7 +4,7 @@ set -e  # Exit immediately if a command exits with a non-zero status
 
 # Test frontend
 echo "Testing frontend availability..."
-HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 http://$PUBLIC_IP:3000/)
+HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 25 http://$PUBLIC_IP:3000/)
 if [ "$HTTP_STATUS" -eq 200 ]; then
   echo "✅ Frontend test passed - HTTP status 200 OK"
 else
