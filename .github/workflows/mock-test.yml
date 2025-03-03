@@ -1,8 +1,9 @@
 name: Build, Deploy and Mock Test
 
 on:
-  push:
-    branches: [main, master]
+  schedule:
+    # Runs at midnight PST (8 UTC)
+    - cron: "0 8 * * *"
   workflow_dispatch: # Allow manual triggering
 
 jobs:
@@ -126,14 +127,14 @@ jobs:
           docker push $ECR_REPO:frontend
           docker push $ECR_REPO:backend
 
-      # - name: Clean up temporary EC2
-      #   if: always()
-      #   env:
-      #     AWS_REGION: ${{ secrets.AWS_REGION }}
-      #     SG_ID: ${{ steps.launch-ec2.outputs.sg_id }}
-      #     DB_SG_ID: ${{ secrets.DB_SG_ID }}
-      #     INSTANCE_ID: ${{ steps.launch-ec2.outputs.instance_id }}
-      #   run: |
-      #     cd scripts
-      #     chmod +x ec2-deletion.sh
-      #     ./ec2-deletion.sh
+      - name: Clean up temporary EC2
+        if: always()
+        env:
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          SG_ID: ${{ steps.launch-ec2.outputs.sg_id }}
+          DB_SG_ID: ${{ secrets.DB_SG_ID }}
+          INSTANCE_ID: ${{ steps.launch-ec2.outputs.instance_id }}
+        run: |
+          cd scripts
+          chmod +x ec2-deletion.sh
+          ./ec2-deletion.sh
