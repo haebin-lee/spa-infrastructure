@@ -23,5 +23,8 @@ else
   exit 1
 fi
 
+echo "SMOKE_TEST_RESULT=FAIL"
+exit 1
+
 echo "SMOKE_TEST_RESULT=SUCCESS"
 echo "All smoke tests passed successfully! 🎉"
